@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>居酒屋 仕込み・発注管理</title>
+<style>
+:root{--bg:#f5f6f8;--card:#fff;--ink:#20242c;--muted:#697386;--line:#e2e6ec;--accent:#166b55;--accent2:#e6f4ef;--warn:#fff5df}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+header{background:#173f35;color:#fff;padding:22px 16px 18px}header .wrap,main{max-width:980px;margin:auto}h1{font-size:22px;margin:0 0 6px}header p{margin:0;color:#d8e9e3;font-size:13px}
+main{padding:16px;display:grid;gap:14px}.tabs{display:flex;gap:8px;flex-wrap:wrap}.tab{border:1px solid var(--line);background:white;border-radius:999px;padding:10px 15px;font-weight:700;color:var(--muted);cursor:pointer}.tab.active{background:var(--accent);border-color:var(--accent);color:white}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:0 2px 8px #1d29390a}.hidden{display:none}h2{font-size:18px;margin:0 0 12px}h3{font-size:15px;margin:0 0 8px}.muted{color:var(--muted);font-size:13px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.course{border:1px solid var(--line);border-radius:12px;padding:12px}.coursehead{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}.count{width:90px;font-size:18px;text-align:center}.field{display:flex;align-items:center;gap:10px;margin:8px 0}.field label{flex:1;font-size:14px}.field input,.field select,.date{width:112px;max-width:48%;padding:9px;border:1px solid #cfd5dd;border-radius:8px;font-size:15px;background:#fff;color:var(--ink)}input[type=number]{font-variant-numeric:tabular-nums}.date{width:auto;max-width:100%}.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}.stat{background:#f0f6f4;border-radius:12px;padding:12px}.stat small{display:block;color:var(--muted);font-size:12px}.stat strong{font-size:22px;display:block;margin-top:4px}.tablewrap{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:14px}th,td{text-align:left;padding:11px 8px;border-bottom:1px solid var(--line);white-space:nowrap}th{color:var(--muted);font-size:12px;font-weight:700}td.num{text-align:right;font-variant-numeric:tabular-nums}.pill{background:var(--accent2);color:var(--accent);border-radius:999px;padding:4px 8px;font-size:12px;font-weight:700}.btn{border:0;border-radius:9px;padding:11px 14px;background:var(--accent);color:white;font-weight:700;cursor:pointer}.btn.secondary{background:#eef1f4;color:#343b46}.btn.danger{background:#fff0ef;color:#a3332c}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.ingredient{border:1px solid var(--line);border-radius:12px;padding:12px;margin:10px 0}.ingredienttop{display:flex;justify-content:space-between;align-items:center;gap:8px}.ingredienttop input.name{font-size:16px;font-weight:700;max-width:58%;border:1px solid #cfd5dd;border-radius:7px;padding:8px;width:58%}.smallfields{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}.smallfields label{font-size:12px;color:var(--muted);display:block;margin-bottom:4px}.smallfields input,.smallfields select{width:100%;padding:8px;border:1px solid #cfd5dd;border-radius:7px;font-size:14px}.note{background:var(--warn);padding:11px 12px;border-radius:10px;font-size:13px;line-height:1.5}.checkrow{display:flex;gap:8px;align-items:center}.checkrow input{width:18px;height:18px}.empty{padding:22px;text-align:center;color:var(--muted)}footer{font-size:12px;color:var(--muted);line-height:1.6;padding:0 2px}
+@media(max-width:620px){.grid{grid-template-columns:1fr}.summary{grid-template-columns:repeat(3,1fr)}.stat{padding:9px}.stat strong{font-size:18px}.smallfields{grid-template-columns:repeat(2,1fr)}main{padding:12px}.panel{padding:13px}}
+</style>
+</head>
+<body>
+<header><div class="wrap"><h1>仕込み・発注管理</h1><p>コース予約から必要量を集計。食材の規格・定数はあとから編集できます。</p></div></header>
+<main>
+<div class="tabs">
+<button class="tab active" data-tab="orders">① 予約入力</button>
+<button class="tab" data-tab="prep">② 仕込み一覧</button>
+<button class="tab" data-tab="settings">③ 食材・定数設定</button>
+</div>
+<section id="orders" class="panel">
+<h2>翌日の予約人数</h2>
+<div class="field"><label for="workdate">営業日</label><input class="date" id="workdate" type="date"></div>
+<p class="muted">コースごとの予約人数を入力してください。数字を変えると必要量が自動更新されます。</p>
+<div class="grid" id="courseInputs"></div>
+<div class="actions"><button class="btn" id="goPrep">仕込み一覧を見る</button><button class="btn secondary" id="clearCounts">人数を0にする</button></div>
+</section>
+<section id="prep" class="panel hidden">
+<h2>仕込み・発注目安</h2>
+<div class="summary"><div class="stat"><small>コース予約人数</small><strong id="totalPeople">0人</strong></div><div class="stat"><small>必要食材・仕込み項目</small><strong id="totalItems">0品</strong></div><div class="stat"><small>発注確認が必要</small><strong id="orderItems">0品</strong></div></div>
+<div class="note">登録した定数と現在庫から発注目安を計算します。現在庫は「食材・定数設定」で発注単位ごとに入力してください。発注前に現物を確認してください。</div>
+<div class="tablewrap"><table><thead><tr><th>食材・仕込み</th><th>必要量</th><th>必要数</th><th>在庫</th><th>発注目安</th><th>完了</th></tr></thead><tbody id="prepRows"></tbody></table></div>
+<div class="actions"><button class="btn secondary" id="exportCsv">CSVを書き出す</button><button class="btn secondary" id="resetChecks">チェックをリセット</button></div>
+</section>
+<section id="settings" class="panel hidden">
+<h2>食材・定数設定</h2>
+<p class="muted">1人前の使用量・袋やケースの規格・現在庫を設定できます。変更内容はこの端末のブラウザに保存されます。</p>
+<div class="note">発注目安＝必要数－現在庫（マイナスの場合は0）。現在庫は発注単位の数で入力します。サラダは1ケースの束数と1束あたり人前も設定できます。</div>
+<div id="ingredientSettings"></div>
+<div class="actions"><button class="btn" id="addIngredient">＋ 食材を追加</button><button class="btn secondary" id="restoreDefaults">初期設定に戻す</button><button class="btn secondary" id="resetStock">全食材の現在庫を0にする</button></div>
+</section>
+<footer>試作品 v2 · 在庫入力・発注目安に対応 · データはこのブラウザ内に保存されます。端末間共有や店舗予約システムとの自動連携は未実装です。発注前に現物在庫・予約内容を確認してください。</footer>
+</main>
+<script>
+const defaultCourses=[
+{name:"極みコース",items:["季節の冷製茶碗蒸し","おつまみ半熟煮卵～いくらのせ～","ひまりサラダ","生牡蠣","メカジキの藁焼き","近江牛の炙りユッケ","蟹クリームコロッケ","サーモンとイクラの蒸篭ご飯","ブリュレ"]},
+{name:"ひまりコース",items:["季節の冷製茶碗蒸し","おつまみ半熟煮卵～いくらのせ～","ひまりサラダ","宇都宮ハムカツ","名物あて巻き～とろたく巻き～","トリュフ香るポテトフライ","海鮮ちらしの蒸篭ご飯","ブリュレ"]},
+{name:"えびしゃぶコース",items:["季節の冷製茶碗蒸し","おつまみ半熟煮卵～いくらのせ～","ひまりサラダ","とろたく","えびしゃぶ","特製エビ入り水餃子","鍋の〆","ブリュレ"]},
+{name:"牡蠣鍋コース",items:["季節の冷製茶碗蒸し","おつまみ半熟煮卵～いくらのせ～","ひまりサラダ","生牡蠣","牡蠣鍋","牡蠣フライ","鍋の〆","ブリュレ"]}
+];
+const defaultIngredients=[
+{id:"salad",name:"ひまりサラダ",type:"case",perPerson:1,packSize:20,caseBundles:4,bundlePeople:5,unit:"人前",course:["極みコース","ひまりコース","えびしゃぶコース","牡蠣鍋コース"],note:"1ケースの束数・1束あたり人数を編集"},
+{id:"oyster",name:"生牡蠣",type:"piece",perPerson:1,packSize:1,unit:"個",course:["極みコース","牡蠣鍋コース"]},
+{id:"fish",name:"メカジキの藁焼き",type:"portion",perPerson:1,packSize:4,unit:"人前",course:["極みコース"],packUnit:"塊"},
+{id:"potato",name:"トリュフ香るポテトフライ",type:"portion",perPerson:1,packSize:20,unit:"人前",course:["ひまりコース"],packUnit:"袋"},
+{id:"brulee",name:"ブリュレ",type:"portion",perPerson:1,packSize:16,unit:"人前",course:["極みコース","ひまりコース","えびしゃぶコース","牡蠣鍋コース"],packUnit:"仕込み"},
+{id:"crab",name:"蟹クリームコロッケ",type:"portion",perPerson:1,packSize:6,unit:"個",course:["極みコース"],packUnit:"袋",piecesPerPerson:1},
+{id:"shrimp",name:"えびしゃぶ",type:"portion",perPerson:6,packSize:1,unit:"尾",course:["えびしゃぶコース"],packUnit:"尾",minPeople:2},
+{id:"dumpling",name:"特製エビ入り水餃子",type:"portion",perPerson:3,packSize:50,unit:"個",course:["えびしゃぶコース"],packUnit:"袋"},
+{id:"friedOyster",name:"牡蠣フライ",type:"portion",perPerson:1,packSize:20,unit:"個",course:["牡蠣鍋コース"],packUnit:"袋"}
+];
+function readStore(key,fallback){try{const v=localStorage.getItem(key);return v?JSON.parse(v):fallback}catch(e){return fallback}}
+let courses=readStore("iz_courses",null)||JSON.parse(JSON.stringify(defaultCourses));
+let ingredients=readStore("iz_ingredients",null)||JSON.parse(JSON.stringify(defaultIngredients));
+let counts=readStore("iz_counts",{});
+let checks=readStore("iz_checks",{});
+ingredients=ingredients.map(x=>({...x,stockPacks:Number(x.stockPacks)||0}));
+function save(){localStorage.setItem("iz_courses",JSON.stringify(courses));localStorage.setItem("iz_ingredients",JSON.stringify(ingredients));localStorage.setItem("iz_counts",JSON.stringify(counts));localStorage.setItem("iz_checks",JSON.stringify(checks))}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function renderCourses(){document.getElementById("courseInputs").innerHTML=courses.map((c,i)=>`<div class="course"><div class="coursehead"><strong>${esc(c.name)}</strong><span class="pill">${c.items.length}品</span></div><div class="field"><label>予約人数</label><input class="count" type="number" min="0" step="1" value="${counts[c.name]||0}" data-course="${esc(c.name)}"></div><div class="muted">${c.items.map(esc).join("・")}</div></div>`).join("");document.querySelectorAll("[data-course]").forEach(el=>el.addEventListener("input",()=>{counts[el.dataset.course]=Math.max(0,Math.floor(Number(el.value)||0));save();renderPrep()}))}
+function courseQty(ing){return (ing.course||[]).reduce((n,name)=>n+(Number(counts[name])||0),0)}
+function calc(ing){
+ let people=courseQty(ing),qty=people*(Number(ing.perPerson)||1),unit=ing.unit||"個",packs=0,packUnit=ing.packUnit||"袋",packContent=null,note="";
+ if(ing.id==="salad") {let bundles=Math.ceil(qty/Math.max(1,Number(ing.bundlePeople)||1));packs=Math.ceil(bundles/Math.max(1,Number(ing.caseBundles)||1));unit="人前";packUnit="ケース";packContent=bundles;}
+ else if(ing.id==="brulee"){packs=Math.ceil(qty/Math.max(1,Number(ing.packSize)||16));unit="人前";packUnit=ing.packUnit||"仕込み";}
+ else if(ing.id==="shrimp"){unit=ing.unit||"尾";packUnit="尾";if(people>0&&people<Number(ing.minPeople||2)){qty=0;packs=0;note="最低2人前から。予約条件を確認";}else packs=qty;}
+ else if(ing.type==="piece"||(Number(ing.packSize)===1&&unit==="尾")){packs=qty;packUnit=unit;}
+ else packs=Math.ceil(qty/Math.max(1,Number(ing.packSize)||1));
+ const stock=Math.max(0,Number(ing.stockPacks)||0),orderPacks=Math.max(0,Math.ceil(packs-stock));
+ return {people,qty,unit,packs,packUnit,packContent,stock,orderPacks,note};
+}
+function renderPrep(){let total=courses.reduce((n,c)=>n+(Number(counts[c.name])||0),0);let rows=ingredients.map(ing=>({ing,result:calc(ing)})).filter(x=>x.result.people>0);document.getElementById("totalPeople").textContent=total+"人";document.getElementById("totalItems").textContent=rows.length+"品";document.getElementById("orderItems").textContent=rows.filter(x=>x.result.orderPacks>0).length+"品";document.getElementById("prepRows").innerHTML=rows.length?rows.map(({ing,result})=>`<tr><td>${esc(ing.name)}${result.note?`<div class="muted">${esc(result.note)}</div>`:""}</td><td class="num">${result.qty}${esc(result.unit)}</td><td class="num">${result.packs}${esc(result.packUnit)}${ing.id==="salad"?`（${result.packContent}束必要）`:""}</td><td class="num">${result.stock}${esc(result.packUnit)}</td><td class="num"><strong>${result.orderPacks}${esc(result.packUnit)}</strong></td><td><label class="checkrow"><input type="checkbox" data-check="${esc(ing.id)}" ${checks[ing.id]?"checked":""}><span>${checks[ing.id]?"完了":"未完了"}</span></label></td></tr>`).join(""):`<tr><td colspan="6" class="empty">予約人数を入力すると、必要量と発注目安が表示されます。</td></tr>`;document.querySelectorAll("[data-check]").forEach(el=>el.addEventListener("change",()=>{checks[el.dataset.check]=el.checked;save();renderPrep()}))}
+function renderSettings(){document.getElementById("ingredientSettings").innerHTML=ingredients.map((ing,i)=>`<div class="ingredient"><div class="ingredienttop"><input class="name" aria-label="食材名" value="${esc(ing.name)}" data-field="name" data-i="${i}"><button class="btn danger" data-delete="${i}">削除</button></div><div class="smallfields"><div><label>1人前の使用量</label><input type="number" min="0.01" step="any" value="${ing.perPerson??1}" data-field="perPerson" data-i="${i}"></div><div><label>1袋/ケースの基準量</label><input type="number" min="1" step="any" value="${ing.packSize??1}" data-field="packSize" data-i="${i}"></div><div><label>単位</label><select data-field="unit" data-i="${i}">${["人前","個","尾","束","g","kg","ml","L"].map(u=>`<option ${ing.unit===u?"selected":""}>${u}</option>`).join("")}</select></div><div><label>現在庫（発注単位）</label><input type="number" min="0" step="any" value="${ing.stockPacks??0}" data-field="stockPacks" data-i="${i}"></div><div><label>発注単位</label><select data-field="packUnit" data-i="${i}">${["袋","ケース","塊","仕込み","個","尾","箱"].map(u=>`<option ${((ing.packUnit||"袋")===u)?"selected":""}>${u}</option>`).join("")}</select></div><div><label>対象コース</label><select multiple size="4" data-field="course" data-i="${i}">${courses.map(c=>`<option value="${esc(c.name)}" ${(ing.course||[]).includes(c.name)?"selected":""}>${esc(c.name)}</option>`).join("")}</select></div>${ing.id==="salad"?`<div><label>1ケースの束数</label><input type="number" min="1" step="1" value="${ing.caseBundles||4}" data-field="caseBundles" data-i="${i}"></div><div><label>1束あたり人前</label><input type="number" min="1" step="1" value="${ing.bundlePeople||5}" data-field="bundlePeople" data-i="${i}"></div>`:""}</div></div>`).join("");document.querySelectorAll("#ingredientSettings [data-field]").forEach(el=>{let update=()=>{let i=Number(el.dataset.i),field=el.dataset.field,val=field==="course"?Array.from(el.selectedOptions).map(o=>o.value):(["name","unit","packUnit"].includes(field)?el.value:Number(el.value));ingredients[i][field]=val;save();renderPrep()};el.addEventListener(el.tagName==="SELECT"&&el.multiple?"change":"change",update);if(el.type==="number"||el.classList.contains("name"))el.addEventListener("change",update)});document.querySelectorAll("[data-delete]").forEach(el=>el.addEventListener("click",()=>{let i=Number(el.dataset.delete);if(confirm(ingredients[i].name+"を削除しますか？")){ingredients.splice(i,1);save();renderSettings();renderPrep()}}))}
+document.querySelectorAll(".tab").forEach(btn=>btn.addEventListener("click",()=>{document.querySelectorAll(".tab").forEach(b=>b.classList.toggle("active",b===btn));document.querySelectorAll("main section").forEach(s=>s.classList.toggle("hidden",s.id!==btn.dataset.tab));if(btn.dataset.tab==="settings")renderSettings();if(btn.dataset.tab==="prep")renderPrep()}));
+document.getElementById("goPrep").onclick=()=>document.querySelector('[data-tab="prep"]').click();
+document.getElementById("clearCounts").onclick=()=>{if(confirm("全コースの人数を0にしますか？")){counts={};save();renderCourses();renderPrep()}};
+document.getElementById("resetChecks").onclick=()=>{checks={};save();renderPrep()};
+document.getElementById("addIngredient").onclick=()=>{ingredients.push({id:"custom_"+Date.now(),name:"新しい食材",type:"portion",perPerson:1,packSize:1,unit:"個",packUnit:"袋",course:courses.map(c=>c.name)});save();renderSettings();renderPrep()};
+document.getElementById("resetStock").onclick=()=>{if(confirm("全食材の現在庫を0にしますか？")){ingredients=ingredients.map(x=>({...x,stockPacks:0}));save();renderSettings();renderPrep()}};
+document.getElementById("restoreDefaults").onclick=()=>{if(confirm("食材設定を初期値に戻しますか？予約人数は保持します。")){ingredients=JSON.parse(JSON.stringify(defaultIngredients));save();renderSettings();renderPrep()}};
+document.getElementById("exportCsv").onclick=()=>{let lines=[["食材","必要量","単位","必要数","発注単位","現在庫","発注目安","完了"].join(",")];ingredients.map(ing=>({ing,r:calc(ing)})).filter(x=>x.r.people>0).forEach(({ing,r})=>lines.push([ing.name,r.qty,r.unit,r.packs,r.packUnit,r.stock,r.orderPacks,checks[ing.id]?"完了":"未完了"].map(x=>'"'+String(x).replace(/"/g,'""')+'"').join(",")));let blob=new Blob(["\ufeff"+lines.join("\r\n")],{type:"text/csv;charset=utf-8;"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="仕込み発注リスト.csv";a.click();URL.revokeObjectURL(url)};
+let d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());document.getElementById("workdate").value=d.toISOString().slice(0,10);
+renderCourses();renderPrep();
+</script>
+</body></html>
